@@ -1,4 +1,4 @@
-# brain-spark
+# brain-spark 🧠 ✨
 
 An interactive CLI that researches any topic using a local LLM, then explains it back to you like an enthusiastic 10th-grade teacher.
 
@@ -64,3 +64,5 @@ Edit the constants at the top of `research_agent.py` to swap models or point to 
 MODEL = "gemma4:latest"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 ```
+
+<br>
