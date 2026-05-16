@@ -95,14 +95,14 @@ Now teach this to the student. Requirements:
 - Relate key points to real life (everyday examples they'd recognize)
 - Compare/contrast with something similar so the concept clicks
 - Use a conversational, encouraging tone
-- Keep it under 600 words
+- Keep it under 800 words
 - Use markdown formatting (headers, bold, bullet points)
 - End with a "mind-blowing" takeaway or fun fact
 
 Do NOT use a title/heading at the very top (I'll add one). Jump straight into teaching."""
 
     print(colored("  Teaching...", MAGENTA))
-    return query_ollama(prompt, max_tokens=1200)
+    return query_ollama(prompt, max_tokens=1600)
 
 
 def generate_filename(topic):
