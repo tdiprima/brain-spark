@@ -36,5 +36,8 @@ logs/
 .bash_history
 .zsh_history
 
-.claude/
 *.md
+*.json
+
+.claude/
+.codegraph/
