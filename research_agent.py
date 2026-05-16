@@ -79,10 +79,10 @@ def query_ollama(prompt, max_tokens=1500):
 def research_topic(topic):
     prompt = (
         f"List the key facts about this topic in bullet points. No introduction, "
-        f"no preamble, just the facts. Under 200 words: {topic}"
+        f"no preamble, just the facts. Under 400 words: {topic}"
     )
     print(colored("\n  Researching...", MAGENTA))
-    return query_ollama(prompt, max_tokens=500)
+    return query_ollama(prompt, max_tokens=800)
 
 
 def teach_topic(topic, raw_info):
@@ -96,14 +96,14 @@ Now teach this to the student. Requirements:
 - Relate key points to real life (everyday examples they'd recognize)
 - Compare/contrast with something similar so the concept clicks
 - Use a conversational, encouraging tone
-- Keep it under 800 words
+- Keep it under 600 words
 - Use markdown formatting (headers, bold, bullet points)
 - End with a "mind-blowing" takeaway or fun fact
 
 Do NOT use a title/heading at the very top (I'll add one). Jump straight into teaching."""
 
     print(colored("  Teaching...", MAGENTA))
-    return query_ollama(prompt, max_tokens=1600)
+    return query_ollama(prompt, max_tokens=1200)
 
 
 def generate_filename(topic):
