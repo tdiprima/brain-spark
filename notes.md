@@ -18,4 +18,10 @@ python3 research_agent.py
 
 **Note:** Change MODEL var if needed.
 
+## Check model
+
+```sh
+curl http://localhost:11434/api/generate -d '{"model":"gemma4:latest","prompt":"hello","stream":false}'
+```
+
 <br>

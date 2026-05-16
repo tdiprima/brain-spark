@@ -140,7 +140,17 @@ def main():
         sys.exit(0)
 
     raw_info = research_topic(topic)
+    if not raw_info:
+        print(colored("\n  ERROR: Research step returned empty. Check Ollama/model.", "\033[91m"))
+        sys.exit(1)
+    print(colored(f"  Got {len(raw_info.split())} words of research.", GREEN))
+
     lesson = teach_topic(topic, raw_info)
+    if not lesson:
+        print(colored("\n  ERROR: Teaching step returned empty. Check Ollama/model.", "\033[91m"))
+        sys.exit(1)
+    print(colored(f"  Got {len(lesson.split())} words of lesson.", GREEN))
+
     filename = generate_filename(topic)
 
     write_markdown(filename, topic, lesson)
