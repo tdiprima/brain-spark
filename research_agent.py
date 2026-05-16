@@ -92,6 +92,7 @@ Here are the key facts:
 {raw_info}
 
 Now teach this to the student. Requirements:
+- Make it easy to memorize
 - Make it sound genuinely interesting and exciting
 - Relate key points to real life (everyday examples they'd recognize)
 - Compare/contrast with something similar so the concept clicks
