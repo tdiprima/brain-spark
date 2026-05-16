@@ -78,10 +78,11 @@ def query_ollama(prompt, max_tokens=1500):
 
 def research_topic(topic):
     prompt = (
-        f"Research this topic concisely (under 400 words, factual, key points only): {topic}"
+        f"List the key facts about this topic in bullet points. No introduction, "
+        f"no preamble, just the facts. Under 200 words: {topic}"
     )
     print(colored("\n  Researching...", MAGENTA))
-    return query_ollama(prompt, max_tokens=800)
+    return query_ollama(prompt, max_tokens=500)
 
 
 def teach_topic(topic, raw_info):
