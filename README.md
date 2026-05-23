@@ -58,11 +58,26 @@ On first run, it asks your name and saves it to `user_profile.json`. Every run a
 
 **Configuration**
 
-Edit the constants at the top of `research_agent.py` to swap models or point to a remote Ollama instance:
+Set environment variables to override defaults — no file editing required:
 
-```python
-MODEL = "gemma4:latest"
-OLLAMA_URL = "http://localhost:11434/api/generate"
+| Variable | Default | Description |
+|---|---|---|
+| `OLLAMA_URL` | `http://localhost:11434/api/generate` | Ollama endpoint |
+| `OLLAMA_MODEL` | `gemma4:latest` | Model to use |
+| `BRAIN_SPARK_PROFILE` | `user_profile.json` | Path to saved profile |
+
+```bash
+OLLAMA_MODEL=llama3:latest python research_agent.py
+```
+
+## Project structure
+
+```
+research_agent.py   # Entry point — orchestration and display only
+pipeline.py         # Research → teach → filename → write pipeline
+ollama_client.py    # Ollama HTTP transport with typed exceptions
+profile.py          # User profile storage and retrieval
+config.py           # Configuration from environment variables
 ```
 
 <br>
