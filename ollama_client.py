@@ -19,6 +19,17 @@ class OllamaResponseError(OllamaError):
     """Ollama answered with an error status or malformed body."""
 
 
+class OllamaTruncatedError(OllamaError):
+    """Generation stopped because the token budget ran out."""
+
+    def __init__(self, max_tokens: int) -> None:
+        super().__init__(f"Ollama output was cut off at the {max_tokens}-token limit")
+        self.max_tokens = max_tokens
+
+
+DONE_REASON_LENGTH = "length"
+
+
 class OllamaClient:
     """Thin wrapper around POST /api/generate."""
 
@@ -58,10 +69,10 @@ class OllamaClient:
             logger.error("ollama_request_failed url=%s error=%s", self.url, error)
             raise OllamaConnectionError(f"Request to Ollama failed: {error}") from error
 
-        return _extract_response_text(response)
+        return _extract_response_text(response, max_tokens)
 
 
-def _extract_response_text(response: requests.Response) -> str:
+def _extract_response_text(response: requests.Response, max_tokens: int) -> str:
     """Validate the HTTP response and pull out the generated text."""
     if response.status_code != 200:
         logger.error("ollama_bad_status status=%d", response.status_code)
@@ -79,4 +90,7 @@ def _extract_response_text(response: requests.Response) -> str:
     text = body["response"]
     if not isinstance(text, str) or not text.strip():
         raise OllamaResponseError("Ollama returned an empty response")
+    if body.get("done_reason") == DONE_REASON_LENGTH:
+        logger.warning("ollama_truncated max_tokens=%d", max_tokens)
+        raise OllamaTruncatedError(max_tokens)
     return text.strip()

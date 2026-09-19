@@ -41,8 +41,12 @@ def load_name(profile_path: str) -> str | None:
     if not isinstance(data, dict):
         logger.warning("profile_malformed path=%s", path)
         return None
+    raw_name = data.get("name")
+    if not isinstance(raw_name, str):
+        logger.warning("profile_invalid_name path=%s", path)
+        return None
     try:
-        return validate_name(str(data.get("name", "")))
+        return validate_name(raw_name)
     except ValueError:
         logger.warning("profile_invalid_name path=%s", path)
         return None

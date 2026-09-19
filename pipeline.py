@@ -12,11 +12,13 @@ from config import (
     TEACH_MAX_TOKENS,
     TEACH_WORD_LIMIT,
 )
-from ollama_client import OllamaClient
+from ollama_client import OllamaClient, OllamaTruncatedError
 
 logger = logging.getLogger("pipeline")
 
 MAX_FILENAME_LENGTH = 60
+MAX_FILENAME_ATTEMPTS = 1000
+TRUNCATION_RETRY_MULTIPLIER = 2
 FALLBACK_FILENAME = "lesson"
 _SLUG_CLEAN_PATTERN = re.compile(r"[^a-z0-9]+")
 
@@ -75,22 +77,27 @@ def slugify(raw_text: str) -> str:
     return slug or FALLBACK_FILENAME
 
 
-def unique_markdown_path(directory: Path, stem: str) -> Path:
-    """Return <stem>.md or <stem>-N.md so existing files are never overwritten."""
-    candidate = directory / f"{stem}.md"
-    counter = 2
-    while candidate.exists():
-        candidate = directory / f"{stem}-{counter}.md"
-        counter += 1
-    return candidate
+def generate_complete(client: OllamaClient, prompt: str, max_tokens: int) -> str:
+    """Generate text; on token-limit truncation retry once with a larger budget."""
+    try:
+        return client.generate(prompt, max_tokens)
+    except OllamaTruncatedError:
+        retry_budget = max_tokens * TRUNCATION_RETRY_MULTIPLIER
+        logger.info("truncation_retry max_tokens=%d", retry_budget)
+    try:
+        return client.generate(prompt, retry_budget)
+    except OllamaTruncatedError as error:
+        raise PipelineError(
+            f"Model output stayed incomplete after retry ({error}). Try a narrower topic."
+        ) from error
 
 
 def research(client: OllamaClient, topic: str) -> str:
-    return client.generate(build_research_prompt(topic), RESEARCH_MAX_TOKENS)
+    return generate_complete(client, build_research_prompt(topic), RESEARCH_MAX_TOKENS)
 
 
 def teach(client: OllamaClient, topic: str, facts: str) -> str:
-    return client.generate(build_teach_prompt(topic, facts), TEACH_MAX_TOKENS)
+    return generate_complete(client, build_teach_prompt(topic, facts), TEACH_MAX_TOKENS)
 
 
 def suggest_filename(client: OllamaClient, topic: str) -> str:
@@ -102,13 +109,28 @@ def suggest_filename(client: OllamaClient, topic: str) -> str:
         return slugify(topic)
 
 
+def candidate_paths(directory: Path, stem: str):
+    """Yield <stem>.md, <stem>-2.md, <stem>-3.md ... up to a bounded count."""
+    yield directory / f"{stem}.md"
+    for counter in range(2, MAX_FILENAME_ATTEMPTS + 1):
+        yield directory / f"{stem}-{counter}.md"
+
+
 def write_lesson(directory: Path, stem: str, lesson: str) -> Path:
-    """Write the lesson markdown and return its path."""
-    output_path = unique_markdown_path(directory, stem)
-    try:
-        output_path.write_text(lesson + "\n", encoding="utf-8")
-    except OSError as error:
-        logger.error("lesson_write_failed path=%s error=%s", output_path, error)
-        raise PipelineError(f"Could not write {output_path}: {error}") from error
-    logger.info("lesson_written path=%s", output_path)
-    return output_path
+    """Write the lesson markdown to a fresh file and return its path.
+
+    Exclusive-create mode reserves the name atomically so concurrent runs
+    never overwrite each other.
+    """
+    for output_path in candidate_paths(directory, stem):
+        try:
+            with output_path.open("x", encoding="utf-8") as lesson_file:
+                lesson_file.write(lesson + "\n")
+        except FileExistsError:
+            continue
+        except OSError as error:
+            logger.error("lesson_write_failed path=%s error=%s", output_path, error)
+            raise PipelineError(f"Could not write {output_path}: {error}") from error
+        logger.info("lesson_written path=%s", output_path)
+        return output_path
+    raise PipelineError(f"Too many existing files named {stem}*.md in {directory}")
