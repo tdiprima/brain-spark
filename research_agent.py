@@ -6,7 +6,15 @@ from pathlib import Path
 
 from config import ConfigError, configure_logging, load_config
 from ollama_client import OllamaClient, OllamaError
-from pipeline import PipelineError, research, suggest_filename, teach, validate_topic, write_lesson
+from pipeline import (
+    IncompleteGenerationError,
+    LessonStorageError,
+    research,
+    suggest_filename,
+    teach,
+    validate_topic,
+    write_lesson,
+)
 from user_profile import ProfileError, load_name, save_name, validate_name
 from sanitize import escape_control_characters
 
@@ -16,6 +24,7 @@ EXIT_OK = 0
 EXIT_CONFIG_ERROR = 2
 EXIT_OLLAMA_ERROR = 3
 EXIT_IO_ERROR = 4
+EXIT_INCOMPLETE_OUTPUT = 5
 EXIT_INTERRUPTED = 130
 
 GREEN = "\033[92m"
@@ -90,7 +99,10 @@ def main() -> int:
     except OllamaError as error:
         show_error(str(error))
         return EXIT_OLLAMA_ERROR
-    except (ProfileError, PipelineError) as error:
+    except IncompleteGenerationError as error:
+        show_error(str(error))
+        return EXIT_INCOMPLETE_OUTPUT
+    except (ProfileError, LessonStorageError) as error:
         show_error(str(error))
         return EXIT_IO_ERROR
 

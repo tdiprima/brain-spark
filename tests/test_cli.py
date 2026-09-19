@@ -7,6 +7,7 @@ import pytest
 import research_agent
 from conftest import FakeOllamaClient
 from ollama_client import OllamaConnectionError
+from pipeline import LessonStorageError
 from user_profile import ProfileError
 
 
@@ -82,7 +83,7 @@ def test_cli_storage_error_exit_code(cli, monkeypatch, capsys):
 
 def test_cli_write_failure_exit_code(cli, monkeypatch, capsys):
     monkeypatch.setattr(research_agent, "write_lesson", lambda *_: (_ for _ in ()).throw(
-        __import__("pipeline").PipelineError("Could not write")))
+        LessonStorageError("Could not write")))
     exit_code, _ = cli(["Alex", "topic"], ["F", "L", "name"])
     captured = capsys.readouterr()
     assert exit_code == 4 and "Done!" not in captured.out
@@ -109,6 +110,6 @@ def test_cli_truncated_twice_writes_nothing(cli, capsys):
     from conftest import TRUNCATED
     exit_code, _ = cli(["Alex", "topic"], [TRUNCATED, TRUNCATED])
     captured = capsys.readouterr()
-    assert exit_code == 4
+    assert exit_code == 5
     assert "incomplete after retry" in captured.err
     assert [path for path in cli.directory.iterdir() if path.suffix == ".md"] == []

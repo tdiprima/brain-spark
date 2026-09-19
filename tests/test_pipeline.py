@@ -70,10 +70,16 @@ def test_truncation_recovery_is_bounded(fake_client_factory, tmp_path):
     assert [budget for _, budget in client.calls] == [RESEARCH_MAX_TOKENS, RESEARCH_MAX_TOKENS * 2]
 
     client = fake_client_factory([TRUNCATED, TRUNCATED, "never used"])
-    with pytest.raises(pipeline.PipelineError, match="incomplete after retry"):
+    with pytest.raises(pipeline.IncompleteGenerationError, match="incomplete after retry"):
         pipeline.teach(client, "topic", "facts")
     assert [budget for _, budget in client.calls] == [TEACH_MAX_TOKENS, TEACH_MAX_TOKENS * 2]
     assert list(tmp_path.iterdir()) == []
+
+
+def test_pipeline_errors_share_a_base_class():
+    assert issubclass(pipeline.IncompleteGenerationError, pipeline.PipelineError)
+    assert issubclass(pipeline.LessonStorageError, pipeline.PipelineError)
+    assert not issubclass(pipeline.IncompleteGenerationError, pipeline.LessonStorageError)
 
 
 def test_research_and_teach_pass_topic_and_facts_into_prompts(fake_client_factory):
@@ -127,13 +133,13 @@ def test_write_lesson_collision_exhaustion(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "MAX_FILENAME_ATTEMPTS", 3)
     for name in ["x.md", "x-2.md", "x-3.md"]:
         (tmp_path / name).write_text("taken")
-    with pytest.raises(pipeline.PipelineError, match="Too many existing files"):
+    with pytest.raises(pipeline.LessonStorageError, match="Too many existing files"):
         pipeline.write_lesson(tmp_path, "x", "body")
     assert sorted(entry.name for entry in tmp_path.iterdir()) == ["x-2.md", "x-3.md", "x.md"]
 
 
 def test_write_lesson_surfaces_io_failure(tmp_path):
-    with pytest.raises(pipeline.PipelineError, match="Could not write"):
+    with pytest.raises(pipeline.LessonStorageError, match="Could not write"):
         pipeline.write_lesson(tmp_path / "missing-directory", "x", "body")
 
 
@@ -142,7 +148,7 @@ def test_write_lesson_permission_denied(tmp_path):
     locked = tmp_path / "locked"
     locked.mkdir(mode=0o500)
     try:
-        with pytest.raises(pipeline.PipelineError, match="Could not write"):
+        with pytest.raises(pipeline.LessonStorageError, match="Could not write"):
             pipeline.write_lesson(locked, "x", "body")
     finally:
         locked.chmod(0o700)

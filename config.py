@@ -8,11 +8,8 @@ from dataclasses import dataclass
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434/api/generate"
 DEFAULT_OLLAMA_MODEL = "gemma4:latest"
-DEFAULT_PROFILE_PATH = os.path.join(
-    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-    "brain-spark",
-    "user_profile.json",
-)
+PROFILE_DIRECTORY_NAME = "brain-spark"
+PROFILE_FILE_NAME = "user_profile.json"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 300
 DEFAULT_LOG_LEVEL = "WARNING"
 
@@ -75,12 +72,18 @@ def _validate_log_level(level: str) -> str:
     return upper_level
 
 
+def default_profile_path() -> str:
+    """Private per-user location, honoring XDG_CONFIG_HOME; resolved at call time."""
+    config_home = os.environ.get("XDG_CONFIG_HOME", "").strip() or os.path.expanduser("~/.config")
+    return os.path.join(config_home, PROFILE_DIRECTORY_NAME, PROFILE_FILE_NAME)
+
+
 def load_config() -> Config:
     """Build and validate configuration from environment variables."""
     return Config(
         ollama_url=_validate_url(_read_non_empty("OLLAMA_URL", DEFAULT_OLLAMA_URL)),
         ollama_model=_read_non_empty("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),
-        profile_path=_read_non_empty("BRAIN_SPARK_PROFILE", DEFAULT_PROFILE_PATH),
+        profile_path=_read_non_empty("BRAIN_SPARK_PROFILE", default_profile_path()),
         request_timeout_seconds=_read_positive_int(
             "OLLAMA_TIMEOUT_SECONDS", DEFAULT_REQUEST_TIMEOUT_SECONDS
         ),

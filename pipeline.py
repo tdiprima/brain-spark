@@ -24,7 +24,15 @@ _SLUG_CLEAN_PATTERN = re.compile(r"[^a-z0-9]+")
 
 
 class PipelineError(Exception):
-    """Raised when a lesson cannot be produced or written."""
+    """Base class for pipeline failures."""
+
+
+class IncompleteGenerationError(PipelineError):
+    """The model could not finish its output within the retry budget."""
+
+
+class LessonStorageError(PipelineError):
+    """The finished lesson could not be written to disk."""
 
 
 def validate_topic(raw_topic: str) -> str:
@@ -87,7 +95,7 @@ def generate_complete(client: OllamaClient, prompt: str, max_tokens: int) -> str
     try:
         return client.generate(prompt, retry_budget)
     except OllamaTruncatedError as error:
-        raise PipelineError(
+        raise IncompleteGenerationError(
             f"Model output stayed incomplete after retry ({error}). Try a narrower topic."
         ) from error
 
@@ -130,7 +138,7 @@ def write_lesson(directory: Path, stem: str, lesson: str) -> Path:
             continue
         except OSError as error:
             logger.error("lesson_write_failed path=%s error=%s", output_path, error)
-            raise PipelineError(f"Could not write {output_path}: {error}") from error
+            raise LessonStorageError(f"Could not write {output_path}: {error}") from error
         logger.info("lesson_written path=%s", output_path)
         return output_path
-    raise PipelineError(f"Too many existing files named {stem}*.md in {directory}")
+    raise LessonStorageError(f"Too many existing files named {stem}*.md in {directory}")

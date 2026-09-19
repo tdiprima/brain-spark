@@ -1,12 +1,14 @@
 """Configuration: defaults, environment overrides, validation failures."""
 
+import os
+
 import pytest
 
 import config
 
 ALL_VARIABLES = [
     "OLLAMA_URL", "OLLAMA_MODEL", "BRAIN_SPARK_PROFILE", "OLLAMA_TIMEOUT_SECONDS",
-    "BRAIN_SPARK_LOG_LEVEL",
+    "BRAIN_SPARK_LOG_LEVEL", "XDG_CONFIG_HOME",
 ]
 
 
@@ -20,14 +22,22 @@ def test_defaults():
     loaded = config.load_config()
     assert loaded.ollama_url == config.DEFAULT_OLLAMA_URL
     assert loaded.ollama_model == config.DEFAULT_OLLAMA_MODEL
-    assert loaded.profile_path == config.DEFAULT_PROFILE_PATH
+    assert loaded.profile_path == config.default_profile_path()
     assert loaded.request_timeout_seconds == config.DEFAULT_REQUEST_TIMEOUT_SECONDS
     assert loaded.log_level == config.DEFAULT_LOG_LEVEL
 
 
 def test_default_profile_path_is_private_user_location():
-    assert config.DEFAULT_PROFILE_PATH.endswith("brain-spark/user_profile.json")
-    assert config.DEFAULT_PROFILE_PATH != "user_profile.json"
+    path = config.default_profile_path()
+    assert path.endswith("brain-spark/user_profile.json")
+    assert path.startswith(os.path.expanduser("~/.config"))
+
+
+def test_default_profile_path_resolves_environment_at_load_time(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    assert config.load_config().profile_path == str(tmp_path / "brain-spark" / "user_profile.json")
+    monkeypatch.setenv("XDG_CONFIG_HOME", "   ")
+    assert config.load_config().profile_path.startswith(os.path.expanduser("~/.config"))
 
 
 def test_environment_overrides(monkeypatch):
