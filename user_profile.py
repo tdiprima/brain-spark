@@ -9,7 +9,7 @@ from pathlib import Path
 
 from config import MAX_NAME_LENGTH
 
-logger = logging.getLogger("profile")
+logger = logging.getLogger("user_profile")
 
 _NAME_PATTERN = re.compile(r"^[\w .'\-]+$", re.UNICODE)
 

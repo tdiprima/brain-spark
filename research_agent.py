@@ -7,7 +7,7 @@ from pathlib import Path
 from config import ConfigError, configure_logging, load_config
 from ollama_client import OllamaClient, OllamaError
 from pipeline import PipelineError, research, suggest_filename, teach, validate_topic, write_lesson
-from profile import ProfileError, load_name, save_name, validate_name
+from user_profile import ProfileError, load_name, save_name, validate_name
 from sanitize import escape_control_characters
 
 logger = logging.getLogger("research_agent")

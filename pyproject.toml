@@ -4,4 +4,11 @@ version = "0.1.0"
 description = "Two-stage research-then-teach pipeline in Python using Ollama to turn any question into a clear, memorable lesson"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = ["requests>=2.32.5,<3"]
+dependencies = [
+    "pytest>=9.1.1",
+    "requests>=2.32.5,<3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

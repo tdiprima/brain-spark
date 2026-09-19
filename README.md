@@ -76,8 +76,20 @@ OLLAMA_MODEL=gemma4:latest python research_agent.py
 research_agent.py   # Entry point — orchestration and display only
 pipeline.py         # Research → teach → filename → write pipeline
 ollama_client.py    # Ollama HTTP transport with typed exceptions
-profile.py          # User profile storage and retrieval
+user_profile.py     # User profile storage and retrieval
 config.py           # Configuration from environment variables
+```
+
+## Testing
+
+```sh
+python3 -m pytest
+```
+
+## Check model
+
+```sh
+curl http://localhost:11434/api/generate -d '{"model":"gemma4:latest","prompt":"hello","stream":false}'
 ```
 
 <br>

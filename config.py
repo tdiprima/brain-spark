@@ -109,4 +109,4 @@ def configure_logging(log_level: str) -> None:
     """Send structured JSON logs to stderr at the configured level."""
     handler = logging.StreamHandler()
     handler.setFormatter(JsonLogFormatter())
-    logging.basicConfig(level=getattr(logging, log_level), handlers=[handler])
+    logging.basicConfig(level=getattr(logging, log_level), handlers=[handler], force=True)
