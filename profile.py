@@ -2,7 +2,9 @@
 
 import json
 import logging
+import os
 import re
+import tempfile
 from pathlib import Path
 
 from config import MAX_NAME_LENGTH
@@ -12,8 +14,19 @@ logger = logging.getLogger("profile")
 _NAME_PATTERN = re.compile(r"^[\w .'\-]+$", re.UNICODE)
 
 
+PRIVATE_DIRECTORY_MODE = 0o700
+PRIVATE_FILE_MODE = 0o600
+
+
 class ProfileError(Exception):
     """Raised when the profile file cannot be read or written."""
+
+
+def _reject_symlink(path: Path) -> None:
+    """Refuse to follow a symlink so a planted link cannot redirect reads or writes (CWE-61)."""
+    if path.is_symlink():
+        logger.error("profile_symlink_rejected path=%s", path)
+        raise ProfileError(f"Refusing to use symlinked profile path: {path}")
 
 
 def validate_name(raw_name: str) -> str:
@@ -31,6 +44,7 @@ def validate_name(raw_name: str) -> str:
 def load_name(profile_path: str) -> str | None:
     """Return the saved name, or None when no valid profile exists."""
     path = Path(profile_path)
+    _reject_symlink(path)
     if not path.is_file():
         return None
     try:
@@ -56,8 +70,24 @@ def save_name(profile_path: str, name: str) -> None:
     """Persist the validated name to the profile file."""
     clean_name = validate_name(name)
     path = Path(profile_path)
+    _reject_symlink(path)
+    content = json.dumps({"name": clean_name}, indent=2)
     try:
-        path.write_text(json.dumps({"name": clean_name}, indent=2), encoding="utf-8")
+        path.parent.mkdir(parents=True, exist_ok=True, mode=PRIVATE_DIRECTORY_MODE)
+        _atomic_write(path, content)
     except OSError as error:
         logger.error("profile_write_failed path=%s error=%s", path, error)
         raise ProfileError(f"Could not save profile to {path}: {error}") from error
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    """Write to a private temp file in the same directory, then atomically replace the target."""
+    temp_descriptor, temp_name = tempfile.mkstemp(dir=path.parent, prefix=".profile-", suffix=".tmp")
+    try:
+        with os.fdopen(temp_descriptor, "w", encoding="utf-8") as temp_file:
+            temp_file.write(content)
+        os.chmod(temp_name, PRIVATE_FILE_MODE)
+        os.replace(temp_name, path)
+    except OSError:
+        os.unlink(temp_name)
+        raise

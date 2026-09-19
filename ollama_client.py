@@ -4,6 +4,8 @@ import logging
 
 import requests
 
+from sanitize import escape_control_characters
+
 logger = logging.getLogger("ollama_client")
 
 
@@ -77,7 +79,8 @@ def _extract_response_text(response: requests.Response, max_tokens: int) -> str:
     if response.status_code != 200:
         logger.error("ollama_bad_status status=%d", response.status_code)
         raise OllamaResponseError(
-            f"Ollama returned HTTP {response.status_code}: {response.text[:200]}"
+            f"Ollama returned HTTP {response.status_code}: "
+            f"{escape_control_characters(response.text[:200])}"
         )
     try:
         body = response.json()

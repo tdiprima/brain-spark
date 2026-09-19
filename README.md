@@ -54,7 +54,7 @@ pip install requests
 python research_agent.py
 ```
 
-On first run, it asks your name and saves it to `user_profile.json`. Every run after that, it greets you by name and jumps straight to the topic prompt.
+On first run, it asks your name and saves it to `~/.config/brain-spark/user_profile.json`. Every run after that, it greets you by name and jumps straight to the topic prompt.
 
 **Configuration**
 
@@ -64,7 +64,7 @@ Set environment variables to override defaults — no file editing required:
 |---|---|---|
 | `OLLAMA_URL` | `http://localhost:11434/api/generate` | Ollama endpoint |
 | `OLLAMA_MODEL` | `gemma4:latest` | Model to use |
-| `BRAIN_SPARK_PROFILE` | `user_profile.json` | Path to saved profile |
+| `BRAIN_SPARK_PROFILE` | `~/.config/brain-spark/user_profile.json` | Path to saved profile |
 
 ```bash
 OLLAMA_MODEL=gemma4:latest python research_agent.py

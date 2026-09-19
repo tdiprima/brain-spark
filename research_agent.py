@@ -8,6 +8,7 @@ from config import ConfigError, configure_logging, load_config
 from ollama_client import OllamaClient, OllamaError
 from pipeline import PipelineError, research, suggest_filename, teach, validate_topic, write_lesson
 from profile import ProfileError, load_name, save_name, validate_name
+from sanitize import escape_control_characters
 
 logger = logging.getLogger("research_agent")
 
@@ -35,7 +36,7 @@ def show(text: str, color: str = "") -> None:
 
 
 def show_error(text: str) -> None:
-    print(f"{RED}Error: {text}{RESET}", file=sys.stderr)
+    print(f"{RED}Error: {escape_control_characters(text)}{RESET}", file=sys.stderr)
 
 
 def prompt_valid(label: str, validator) -> str:

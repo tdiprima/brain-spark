@@ -9,5 +9,3 @@ wheels/
 # Virtual environments
 .venv
 .env
-
-user_profile.json

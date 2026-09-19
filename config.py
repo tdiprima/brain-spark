@@ -1,12 +1,18 @@
 """Configuration loaded from environment variables with sane defaults."""
 
+import json
 import logging
 import os
+import time
 from dataclasses import dataclass
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434/api/generate"
 DEFAULT_OLLAMA_MODEL = "gemma4:latest"
-DEFAULT_PROFILE_PATH = "user_profile.json"
+DEFAULT_PROFILE_PATH = os.path.join(
+    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+    "brain-spark",
+    "user_profile.json",
+)
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 300
 DEFAULT_LOG_LEVEL = "WARNING"
 
@@ -84,9 +90,23 @@ def load_config() -> Config:
     )
 
 
+class JsonLogFormatter(logging.Formatter):
+    """One JSON object per line; json.dumps escapes newlines and control characters."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        entry = {
+            "time": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(record.created)),
+            "level": record.levelname,
+            "component": record.name,
+            "event": record.getMessage(),
+        }
+        if record.exc_info:
+            entry["exception"] = self.formatException(record.exc_info)
+        return json.dumps(entry, ensure_ascii=True)
+
+
 def configure_logging(log_level: str) -> None:
-    """Send structured-ish logs to stderr at the configured level."""
-    logging.basicConfig(
-        level=getattr(logging, log_level),
-        format='{"time":"%(asctime)s","level":"%(levelname)s","component":"%(name)s","event":"%(message)s"}',
-    )
+    """Send structured JSON logs to stderr at the configured level."""
+    handler = logging.StreamHandler()
+    handler.setFormatter(JsonLogFormatter())
+    logging.basicConfig(level=getattr(logging, log_level), handlers=[handler])
