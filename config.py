@@ -4,10 +4,9 @@ import json
 import logging
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-DEFAULT_OLLAMA_URL = "http://localhost:11434/api/generate"
-DEFAULT_OLLAMA_MODEL = "gemma4:latest"
+DEFAULT_OPENAI_MODEL = "gpt-5.2"
 PROFILE_DIRECTORY_NAME = "brain-spark"
 PROFILE_FILE_NAME = "user_profile.json"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 300
@@ -32,8 +31,8 @@ class ConfigError(ValueError):
 
 @dataclass(frozen=True)
 class Config:
-    ollama_url: str
-    ollama_model: str
+    openai_api_key: str = field(repr=False)
+    openai_model: str
     profile_path: str
     request_timeout_seconds: int
     log_level: str
@@ -59,10 +58,11 @@ def _read_non_empty(variable_name: str, default: str) -> str:
     return raw_value
 
 
-def _validate_url(url: str) -> str:
-    if not url.startswith(("http://", "https://")):
-        raise ConfigError(f"OLLAMA_URL must start with http:// or https://, got {url!r}")
-    return url
+def _read_api_key() -> str:
+    key = _read_non_empty("OPENAI_API_KEY", "")
+    if any(not 33 <= ord(char) <= 126 for char in key):
+        raise ConfigError("OPENAI_API_KEY must be an ASCII token without whitespace or control characters")
+    return key
 
 
 def _validate_log_level(level: str) -> str:
@@ -81,11 +81,11 @@ def default_profile_path() -> str:
 def load_config() -> Config:
     """Build and validate configuration from environment variables."""
     return Config(
-        ollama_url=_validate_url(_read_non_empty("OLLAMA_URL", DEFAULT_OLLAMA_URL)),
-        ollama_model=_read_non_empty("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),
+        openai_api_key=_read_api_key(),
+        openai_model=_read_non_empty("OPENAI_MODEL", DEFAULT_OPENAI_MODEL),
         profile_path=_read_non_empty("BRAIN_SPARK_PROFILE", default_profile_path()),
         request_timeout_seconds=_read_positive_int(
-            "OLLAMA_TIMEOUT_SECONDS", DEFAULT_REQUEST_TIMEOUT_SECONDS
+            "OPENAI_TIMEOUT_SECONDS", DEFAULT_REQUEST_TIMEOUT_SECONDS
         ),
         log_level=_validate_log_level(
             _read_non_empty("BRAIN_SPARK_LOG_LEVEL", DEFAULT_LOG_LEVEL)

@@ -5,8 +5,8 @@ import json
 import pytest
 
 import research_agent
-from conftest import FakeOllamaClient
-from ollama_client import OllamaConnectionError
+from conftest import FakeOpenAIClient
+from openai_client import OpenAIConnectionError
 from pipeline import LessonStorageError
 from user_profile import ProfileError
 
@@ -17,14 +17,16 @@ def cli(tmp_path, monkeypatch):
     profile_path = tmp_path / "config" / "user_profile.json"
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("BRAIN_SPARK_PROFILE", str(profile_path))
-    monkeypatch.delenv("OLLAMA_URL", raising=False)
-    monkeypatch.delenv("OLLAMA_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    monkeypatch.delenv("BRAIN_SPARK_LOG_LEVEL", raising=False)
+    monkeypatch.delenv("OPENAI_TIMEOUT_SECONDS", raising=False)
 
     def run(stdin_lines, outcomes):
         answers = iter(stdin_lines)
         monkeypatch.setattr("builtins.input", lambda _label="": next(answers))
-        fake_client = FakeOllamaClient(outcomes)
-        monkeypatch.setattr(research_agent, "OllamaClient", lambda *args, **kwargs: fake_client)
+        fake_client = FakeOpenAIClient(outcomes)
+        monkeypatch.setattr(research_agent, "OpenAIClient", lambda *args, **kwargs: fake_client)
         return research_agent.main(), fake_client
 
     run.profile_path = profile_path
@@ -58,18 +60,58 @@ def test_cli_reprompts_on_invalid_input(cli, capsys):
 
 
 def test_cli_config_error_exit_code(cli, monkeypatch, capsys):
-    monkeypatch.setenv("OLLAMA_TIMEOUT_SECONDS", "zero")
+    monkeypatch.setenv("OPENAI_TIMEOUT_SECONDS", "zero")
     exit_code, _ = cli([], [])
     captured = capsys.readouterr()
     assert exit_code == 2
-    assert "OLLAMA_TIMEOUT_SECONDS" in captured.err and "Done!" not in captured.out
+    assert "OPENAI_TIMEOUT_SECONDS" in captured.err and "Done!" not in captured.out
+
+
+def test_missing_key_fails_before_prompting(cli, monkeypatch, capsys):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    exit_code, client = cli([], [])
+    assert exit_code == 2
+    assert client.calls == []
+    assert "OPENAI_API_KEY" in capsys.readouterr().err
+    assert not cli.profile_path.exists()
+
+
+def test_cli_wires_config_to_real_transport(cli, monkeypatch, capsys):
+    from unittest.mock import Mock
+    import openai_client
+    import requests
+
+    answers = iter(["Alex", "gravity"])
+    monkeypatch.setattr("builtins.input", lambda _label="": next(answers))
+    responses = []
+    for text in ["Gravity facts", "# Gravity\nA lesson.", "gravity"]:
+        response = Mock(spec=requests.Response)
+        response.status_code = 200
+        response.json.return_value = {
+            "status": "completed",
+            "output": [{"type": "message", "role": "assistant", "content": [
+                {"type": "output_text", "text": text},
+            ]}],
+        }
+        responses.append(response)
+    post = Mock(side_effect=responses)
+    monkeypatch.setattr(openai_client.requests, "post", post)
+    assert research_agent.main() == 0
+    assert (cli.directory / "gravity.md").read_text() == "# Gravity\nA lesson.\n"
+    assert post.call_count == 3
+    for call in post.call_args_list:
+        assert call.kwargs["headers"]["Authorization"] == "Bearer test-key"
+        assert call.kwargs["json"]["model"] == "gpt-5.2"
+    assert "Gravity facts" in post.call_args_list[1].kwargs["json"]["input"]
+    captured = capsys.readouterr()
+    assert "test-key" not in captured.out + captured.err
 
 
 def test_cli_transport_error_exit_code(cli, capsys):
-    exit_code, _ = cli(["Alex", "topic"], [OllamaConnectionError("Cannot reach Ollama")])
+    exit_code, _ = cli(["Alex", "topic"], [OpenAIConnectionError("Cannot reach OpenAI")])
     captured = capsys.readouterr()
     assert exit_code == 3
-    assert "Cannot reach Ollama" in captured.err and "Done!" not in captured.out
+    assert "Cannot reach OpenAI" in captured.err and "Done!" not in captured.out
     assert list(path for path in cli.directory.iterdir() if path.suffix == ".md") == []
 
 
@@ -99,7 +141,7 @@ def test_cli_interruption_exit_code(cli, monkeypatch, capsys, interruption):
 
 
 def test_filename_failure_preserves_completed_lesson(cli, capsys):
-    exit_code, _ = cli(["Alex", "How do Black Holes form?"], ["F", "# Saved", OllamaConnectionError("down")])
+    exit_code, _ = cli(["Alex", "How do Black Holes form?"], ["F", "# Saved", OpenAIConnectionError("down")])
     assert exit_code == 0
     written = cli.directory / "how-do-black-holes-form.md"
     assert written.read_text() == "# Saved\n"

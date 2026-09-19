@@ -9,7 +9,7 @@ import pytest
 import pipeline
 from config import MAX_TOPIC_LENGTH, RESEARCH_MAX_TOKENS, TEACH_MAX_TOKENS
 from conftest import TRUNCATED
-from ollama_client import OllamaConnectionError
+from openai_client import OpenAIConnectionError
 
 
 @pytest.mark.parametrize("raw_topic", ["", "   ", "\t\n"])
@@ -91,7 +91,7 @@ def test_research_and_teach_pass_topic_and_facts_into_prompts(fake_client_factor
 
 
 def test_suggest_filename_falls_back_to_topic_slug(fake_client_factory):
-    client = fake_client_factory([OllamaConnectionError("down")])
+    client = fake_client_factory([OpenAIConnectionError("down")])
     assert pipeline.suggest_filename(client, "How do Black Holes form?") == "how-do-black-holes-form"
     client = fake_client_factory(["../Stellar Collapse\nextra"])
     assert pipeline.suggest_filename(client, "ignored") == "stellar-collapse"

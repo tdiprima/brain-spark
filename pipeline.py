@@ -12,7 +12,7 @@ from config import (
     TEACH_MAX_TOKENS,
     TEACH_WORD_LIMIT,
 )
-from ollama_client import OllamaClient, OllamaTruncatedError
+from openai_client import OpenAIClient, OpenAITruncatedError
 
 logger = logging.getLogger("pipeline")
 
@@ -85,30 +85,30 @@ def slugify(raw_text: str) -> str:
     return slug or FALLBACK_FILENAME
 
 
-def generate_complete(client: OllamaClient, prompt: str, max_tokens: int) -> str:
+def generate_complete(client: OpenAIClient, prompt: str, max_tokens: int) -> str:
     """Generate text; on token-limit truncation retry once with a larger budget."""
     try:
         return client.generate(prompt, max_tokens)
-    except OllamaTruncatedError:
+    except OpenAITruncatedError:
         retry_budget = max_tokens * TRUNCATION_RETRY_MULTIPLIER
         logger.info("truncation_retry max_tokens=%d", retry_budget)
     try:
         return client.generate(prompt, retry_budget)
-    except OllamaTruncatedError as error:
+    except OpenAITruncatedError as error:
         raise IncompleteGenerationError(
             f"Model output stayed incomplete after retry ({error}). Try a narrower topic."
         ) from error
 
 
-def research(client: OllamaClient, topic: str) -> str:
+def research(client: OpenAIClient, topic: str) -> str:
     return generate_complete(client, build_research_prompt(topic), RESEARCH_MAX_TOKENS)
 
 
-def teach(client: OllamaClient, topic: str, facts: str) -> str:
+def teach(client: OpenAIClient, topic: str, facts: str) -> str:
     return generate_complete(client, build_teach_prompt(topic, facts), TEACH_MAX_TOKENS)
 
 
-def suggest_filename(client: OllamaClient, topic: str) -> str:
+def suggest_filename(client: OpenAIClient, topic: str) -> str:
     """Ask the model for a name; fall back to a slug of the topic on failure."""
     try:
         return slugify(client.generate(build_filename_prompt(topic), FILENAME_MAX_TOKENS))

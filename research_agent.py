@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from config import ConfigError, configure_logging, load_config
-from ollama_client import OllamaClient, OllamaError
+from openai_client import OpenAIClient, OpenAIError
 from pipeline import (
     IncompleteGenerationError,
     LessonStorageError,
@@ -22,7 +22,7 @@ logger = logging.getLogger("research_agent")
 
 EXIT_OK = 0
 EXIT_CONFIG_ERROR = 2
-EXIT_OLLAMA_ERROR = 3
+EXIT_OPENAI_ERROR = 3
 EXIT_IO_ERROR = 4
 EXIT_INCOMPLETE_OUTPUT = 5
 EXIT_INTERRUPTED = 130
@@ -69,7 +69,7 @@ def get_user_name(profile_path: str) -> str:
     return name
 
 
-def run_lesson(client: OllamaClient, topic: str) -> Path:
+def run_lesson(client: OpenAIClient, topic: str) -> Path:
     show("\n  Researching...", CYAN)
     facts = research(client, topic)
     show("  Teaching...", CYAN)
@@ -91,14 +91,14 @@ def main() -> int:
         name = get_user_name(config.profile_path)
         show(f"\nAlright {name}, what do you want to learn about?")
         topic = prompt_valid("  Topic or question: ", validate_topic)
-        client = OllamaClient(config.ollama_url, config.ollama_model, config.request_timeout_seconds)
+        client = OpenAIClient(config.openai_api_key, config.openai_model, config.request_timeout_seconds)
         output_path = run_lesson(client, topic)
     except (KeyboardInterrupt, EOFError):
         show("\nBye!", YELLOW)
         return EXIT_INTERRUPTED
-    except OllamaError as error:
+    except OpenAIError as error:
         show_error(str(error))
-        return EXIT_OLLAMA_ERROR
+        return EXIT_OPENAI_ERROR
     except IncompleteGenerationError as error:
         show_error(str(error))
         return EXIT_INCOMPLETE_OUTPUT
