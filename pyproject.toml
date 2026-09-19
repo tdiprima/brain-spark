@@ -1,0 +1,7 @@
+[project]
+name = "brain-spark"
+version = "0.1.0"
+description = "Two-stage research-then-teach pipeline in Python using Ollama to turn any question into a clear, memorable lesson"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
