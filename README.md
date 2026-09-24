@@ -95,3 +95,5 @@ python3 -m pytest
 Tests use fake keys and mocked HTTP responses, with temporary profile/output directories. They do not call OpenAI or change your shell's environment variables.
 
 API references: [text generation](https://developers.openai.com/api/docs/guides/text), [GPT-5.2](https://developers.openai.com/api/docs/models/gpt-5.2).
+
+<br>
